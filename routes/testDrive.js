@@ -1,0 +1,113 @@
+const express = require('express')
+const router = express.Router()
+const {TestDrive, validate} = require('../model/testDriveSchema')
+const {TgBot} = require('../model/tgBotSchema')
+const validId = require('../middleware/validId')
+const bot = require('../utils/telegramBot')
+const auth=require('../middleware/auth')
+
+
+const sendMessageBot = (text) => {
+
+    const htmlMessage = `
+<strong>Заказ тест-драйва</strong>
+
+<strong>Модель</strong>: ${text?.model}
+<strong>Имя</strong>: <code>${text?.name}</code>
+<strong>Тел</strong>: ${text?.tel}
+`
+    return htmlMessage
+
+}
+
+
+// GET
+router.get('/', async (req, res) => {
+    const testDrive = await TestDrive.find()
+    res.send(testDrive)
+})
+// GET ID
+router.get('/:id', [auth,validId], async (req, res) => {
+    const testDrive = await TestDrive.findById(req.params.id)
+
+    if (!testDrive) {
+        res.status(400).send('Berilgan ID bo\'yicha malumot topilmadi')
+    }
+
+    res.send(testDrive)
+})
+
+// POST
+router.post('/', async (req, res) => {
+    const {error} = validate(req.body)
+
+    if (error) {
+        return res.status(400).send(error.details[0].message)
+    }
+    try {
+        const testDrive = await TestDrive.create(req.body)
+        const chatIds = await TgBot.find()
+        const errors = [];
+
+        await Promise.all(chatIds?.map(async (chat) => {
+            try {
+
+                if (chat?.role === 'all') {
+                    await bot.sendMessage(chat?.tgId, sendMessageBot(testDrive), {parse_mode: 'HTML'})
+                }
+                if (chat?.role === 'drive') {
+                    await bot.sendMessage(chat?.tgId, sendMessageBot(testDrive), {parse_mode: 'HTML'})
+                }
+            } catch (err) {
+                errors.push(err.message)
+            }
+
+        }))
+
+
+
+
+
+        res.status(201).send(testDrive)
+
+    } catch (error) {
+        res.send(error.message)
+    }
+
+})
+
+//PUT
+
+// router.put('/:id', [auth, validId], async (req, res) => {
+//     const {error} = validate(req.body)
+//
+//     if (error) {
+//         return res.status(400).send(error.details[0].message)
+//     }
+//
+//     try {
+//         const testDrive = await TestDrive.findByIdAndUpdate(req.params.id, req.body, {new: true})
+//         if (!testDrive) {
+//             return res.status(404).send('Berilgan ID bo\'yicha malumot topilmadi')
+//         }
+//
+//         res.send(testDrive)
+//     } catch (error) {
+//         res.send(error.message)
+//     }
+//
+// })
+
+//DELETE
+//
+// router.delete('/:id', [auth, validId], async (req, res) => {
+//     const testDrive = await TestDrive.findByIdAndRemove(req.params.id)
+//
+//     if (!testDrive) {
+//         return res.status(404).send('Berilgan ID bo\'yicha malumot topilmadi')
+//     }
+//
+//     res.send(testDrive)
+// })
+
+module.exports = router

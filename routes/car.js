@@ -75,20 +75,14 @@ router.get('/:slug', async (req, res) => {
             .populate('interiorReview.list', 'path')
             .populate('technicalCharacter.image', 'path')
             .populate('imageHome', 'path')
-            .populate('gallery', 'path')
+            .populate('gallery', 'path _id')
 
 
         if (!car) {
             res.send('Berilgan slug bo\'yicha malumot yo\'q')
         }
 
-        if (car.position || !car.position.length > 0) {
-            res.send(car)
-        } else {
-            await car.populate('position')
-
-            res.send(car)
-        }
+        res.send(car)
 
 
     } catch (error) {
@@ -255,13 +249,11 @@ router.delete('/:id', [auth,validId], async (req, res) => {
             car.imageHome,
         ...deleteImageId
     ].map(id => new mongoose.Types.ObjectId(id))
-        console.log(imagesId)
     const getDeleteImages = await Media.find({
         '_id': {
             $in: imagesId
         }
     })
-        console.log(getDeleteImages)
 
 
     await Media.deleteMany({_id: {$in: imagesId}})

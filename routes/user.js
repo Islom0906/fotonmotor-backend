@@ -22,7 +22,7 @@ router.get('/',auth,async (req,res)=>{
     res.send(user)
 })
 
-router.post('/',async (req,res)=>{
+router.post('/',auth,async (req,res)=>{
 
     const {error}=validate(req.body)
 
